@@ -1,6 +1,5 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html>
 <head>
   <title>WYSIWYG</title>
 
@@ -52,7 +51,7 @@
   <script type="text/javascript" charset="utf-8">
     var textarea, editor;
 
-    $E.promptLinkSelection = function() {
+    WysiHat.Commands.promptLinkSelection = function() {
       if (this.linkSelected()) {
         if (confirm("Remove link?"))
           this.unlinkSelection();
@@ -75,23 +74,16 @@
         handler: function(editor) { return editor.promptLinkSelection(); }
       });
 
-      function sanitize(text) {
-        return text.sanitize({
-          tags: ['span', 'p', 'br', 'strong', 'em', 'u', 'a'],
-          attributes: ['id', 'href']
-        });
-      }
-
       editor.observe("field:change", function(event) {
-        $('note_body').setValue(sanitize(editor.innerHTML.formatHTMLOutput()));
+        $('note_body').setValue(WysiHat.Formatting.getApplicationMarkupFrom(editor));
         $('note_body_raw').setValue(event.element().innerHTML);
       });
 
       editor.observe("paste", function(event) {
         (function() {
-          window.getSelection().setBookmark();
-          editor.innerHTML = sanitize(editor.innerHTML.formatHTMLOutput()).formatHTMLInput();
-          window.getSelection().moveToBookmark();
+          // window.getSelection().setBookmark();
+          // editor.innerHTML = editor.innerHTML;
+          // window.getSelection().moveToBookmark();
         }).defer();
       });
 
@@ -104,7 +96,7 @@
   <form id="edit_note" action="#" method="post" style="width: 500px;">
     <div id="note_body_editor" class="editor" contentEditable="true"></div>
 
-    <h3>Sanitized Contents</h3>
+    <h3>Formatted Contents</h3>
     <textarea id="note_body" disabled></textarea>
 
     <h3>Raw Contents</h3>

@@ -8,15 +8,15 @@
  *  methods will be used to bind to button clicks or key presses.
  *
  *  var editor = WysiHat.Editor.attach(textarea);
- *  $('bold_button').observe('click', function(event) {
+ *  $('bold_button').on('click', function(event) {
  *    editor.boldSelection();
- *    Event.stop(event);
+ *    event.stop();
  *  });
  *
  *  In this example, it is important to stop the click event so you don't
  *  lose your current selection.
 **/
-var $E = WysiHat.Commands = (function(window) {
+WysiHat.Commands = (function(window) {
   /**
    *  WysiHat.Commands#boldSelection() -> undefined
    *
@@ -81,12 +81,64 @@ var $E = WysiHat.Commands = (function(window) {
   }
 
   /**
-   *  WysiHat.Commands#blockquoteSelection() -> undefined
+   *  WysiHat.Commands#indentSelection() -> undefined
    *
-   *  Blockquotes the current selection.
+   *  Indents the current selection.
   **/
-  function blockquoteSelection() {
-    this.execCommand('blockquote', false, null);
+  function indentSelection() {
+    // TODO: Should use feature detection
+    if (Prototype.Browser.Gecko) {
+      var selection, range, node, blockquote;
+
+      selection = window.getSelection();
+      range     = selection.getRangeAt(0);
+      node      = selection.getNode();
+
+      if (range.collapsed) {
+        range = document.createRange();
+        range.selectNodeContents(node);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      blockquote = new Element('blockquote');
+      range = selection.getRangeAt(0);
+      range.surroundContents(blockquote);
+    } else {
+      this.execCommand('indent', false, null);
+    }
+  }
+
+  /**
+   *  WysiHat.Commands#outdentSelection() -> undefined
+   *
+   *  Outdents the current selection.
+  **/
+  function outdentSelection() {
+    this.execCommand('outdent', false, null);
+  }
+
+  /**
+   *  WysiHat.Commands#toggleIndentation() -> undefined
+   *
+   *  Toggles indentation the current selection.
+  **/
+  function toggleIndentation() {
+    if (this.indentSelected()) {
+      this.outdentSelection();
+    } else {
+      this.indentSelection();
+    }
+  }
+
+  /**
+   *  WysiHat.Commands#indentSelected() -> boolean
+   *
+   *  Check if current selection is indented.
+  **/
+  function indentSelected() {
+    var node = window.getSelection().getNode();
+    return node.match("blockquote, blockquote *");
   }
 
   /**
@@ -201,8 +253,24 @@ var $E = WysiHat.Commands = (function(window) {
    *
    *  Formats current selection as an ordered list. If the selection is empty
    *  a new list is inserted.
+   *
+   *  If the selection is already a ordered list, the entire list
+   *  will be toggled. However, toggling the last item of the list
+   *  will only affect that item, not the entire list.
   **/
   function toggleOrderedList() {
+    var selection, node;
+
+    selection = window.getSelection();
+    node      = selection.getNode();
+
+    if (this.orderedListSelected() && !node.match("ol li:last-child, ol li:last-child *")) {
+      selection.selectNode(node.up("ol"));
+    } else if (this.unorderedListSelected()) {
+      // Toggle list type
+      selection.selectNode(node.up("ul"));
+    }
+
     this.execCommand('insertorderedlist', false, null);
   }
 
@@ -222,7 +290,7 @@ var $E = WysiHat.Commands = (function(window) {
   **/
   function orderedListSelected() {
     var element = window.getSelection().getNode();
-    if (element) return element.match("[contenteditable=true] ol, [contenteditable=true] ol *");
+    if (element) return element.match('*[contenteditable=""] ol, *[contenteditable=true] ol, *[contenteditable=""] ol *, *[contenteditable=true] ol *');
     return false;
   }
 
@@ -231,8 +299,24 @@ var $E = WysiHat.Commands = (function(window) {
    *
    *  Formats current selection as an unordered list. If the selection is empty
    *  a new list is inserted.
+   *
+   *  If the selection is already a unordered list, the entire list
+   *  will be toggled. However, toggling the last item of the list
+   *  will only affect that item, not the entire list.
   **/
   function toggleUnorderedList() {
+    var selection, node;
+
+    selection = window.getSelection();
+    node      = selection.getNode();
+
+    if (this.unorderedListSelected() && !node.match("ul li:last-child, ul li:last-child *")) {
+      selection.selectNode(node.up("ul"));
+    } else if (this.orderedListSelected()) {
+      // Toggle list type
+      selection.selectNode(node.up("ol"));
+    }
+
     this.execCommand('insertunorderedlist', false, null);
   }
 
@@ -252,7 +336,7 @@ var $E = WysiHat.Commands = (function(window) {
   **/
   function unorderedListSelected() {
     var element = window.getSelection().getNode();
-    if (element) return element.match("[contenteditable=true] ul, [contenteditable=true] ul *");
+    if (element) return element.match('*[contenteditable=""] ul, *[contenteditable=true] ul, *[contenteditable=""] ul *, *[contenteditable=true] ul *');
     return false;
   }
 
@@ -352,7 +436,10 @@ var $E = WysiHat.Commands = (function(window) {
      italicSelection:          italicSelection,
      italicSelected:           italicSelected,
      strikethroughSelection:   strikethroughSelection,
-     blockquoteSelection:      blockquoteSelection,
+     indentSelection:          indentSelection,
+     outdentSelection:         outdentSelection,
+     toggleIndentation:        toggleIndentation,
+     indentSelected:           indentSelected,
      fontSelection:            fontSelection,
      fontSizeSelection:        fontSizeSelection,
      colorSelection:           colorSelection,

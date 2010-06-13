@@ -22,12 +22,15 @@ WysiHat.Editor = {
       'class': 'editor',
       'contentEditable': 'true'
     });
-    editArea.update(textarea.value.formatHTMLInput());
+
+    editArea.update(WysiHat.Formatting.getBrowserMarkupFrom(textarea.value));
 
     Object.extend(editArea, WysiHat.Commands);
 
     textarea.insert({before: editArea});
     textarea.hide();
+
+    // WysiHat.BrowserFeatures.run()
 
     return editArea;
   }
