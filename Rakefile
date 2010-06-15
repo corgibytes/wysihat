@@ -64,20 +64,43 @@ end
 
 
 # Tests
+desc "Builds the distribution, creates the javascript unit tests"
+task :test => 'test:build'
 
-file 'test/unit/tmp/tests' => Dir['test/unit/*.js'] + [:unittest_js, :dist] do
-  FileUtils.mkdir_p File.dirname('test/unit/tmp/tests')
+namespace :test do
+  OUTPUT_DIR = "#{WYSIHAT_ROOT}/test/unit/tmp"
+  task :build => OUTPUT_DIR
+  
+  file OUTPUT_DIR => Dir["#{WYSIHAT_ROOT}/test/unit/*.js"] + [:unittest_js, :dist] do
+    FileUtils.mkdir_p OUTPUT_DIR
 
-  builder = UnittestJS::Builder::SuiteBuilder.new({
-    :input_dir  => "#{WYSIHAT_ROOT}/test/unit",
-    :assets_dir => "#{WYSIHAT_ROOT}/dist"
-  })
-  builder.collect
-  builder.render
+    builder = UnittestJS::Builder::SuiteBuilder.new({
+      :input_dir  => "#{WYSIHAT_ROOT}/test/unit",
+      :assets_dir => "#{WYSIHAT_ROOT}/dist",
+      :output_dir => OUTPUT_DIR
+    })
+    builder.collect
+    builder.render
+  end
+  
+  task :run => :build do
+    runner = UnittestJS::WEBrickRunner::Runner.new(:test_dir => OUTPUT_DIR)
+        
+    Dir["#{OUTPUT_DIR}/*_test.html"].each do |file|
+      file = File.basename(file)
+      test = file.sub('_test.html', '')
+      runner.add_test(file)
+    end
+
+    UnittestJS::Browser::SUPPORTED.each do |browser|
+      runner.add_browser(browser.to_sym)
+    end
+
+    trap('INT') { runner.teardown; exit }
+    runner.run
+  end
 end
 
-desc "Builds the distribution, runs the JavaScript unit tests and collects their results."
-task :test => 'test/unit/tmp/tests'
 
 
 # Vendored libs
